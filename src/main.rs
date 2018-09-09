@@ -20,19 +20,25 @@ impl Ray {
     }
 }
 
-fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> bool {
+fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> f64 {
     use nalgebra::dot;
     let oc = r.origin - center;
     let a = dot(&r.direction, &r.direction);
     let b = 2.0 * dot(&oc, &r.direction);
     let c = dot(&oc, &oc) - radius * radius;
     let discriminant = b * b - 4.0 * a * c;
-    discriminant > 0.0
+    if discriminant < 0.0 {
+        -1.0
+    } else {
+        (-b - discriminant.sqrt()) / (2.0 * a)
+    }
 }
 
 fn color(ray: &Ray) -> Vec3 {
-    if hit_sphere(Vec3::new(0.0, 0.0, -1.0), 0.5, &ray) {
-        Vec3::new(1.0, 0.0, 0.0)
+    let t = hit_sphere(Vec3::new(0.0, 0.0, -1.0), 0.5, &ray);
+    if t > 0.0 {
+        let n = Unit::new_normalize(ray.point_at_parameter(t) - Vec3::new(0.0, 0.0, -1.0));
+        0.5 * Vec3::new(n.x + 1.0, n.y + 1.0, n.z + 1.0)
     } else {
         let unit_direction = Unit::new_normalize(ray.direction);
         let t = 0.5 * (unit_direction.y + 1.0);
