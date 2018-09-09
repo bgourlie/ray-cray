@@ -1,6 +1,8 @@
 extern crate nalgebra;
+extern crate rand;
 
 use nalgebra::Unit;
+use rand::random;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -138,6 +140,7 @@ fn main() -> std::io::Result<()> {
     let mut file = File::create("foo.ppm")?;
     let nx = 200;
     let ny = 100;
+    let ns = 100;
     let lower_left_corner = Vec3::new(-2.0, -1.0, -1.0);
     let horizontal = Vec3::new(4.0, 0.0, 0.0);
     let vertical = Vec3::new(0.0, 2.0, 0.0);
@@ -149,14 +152,17 @@ fn main() -> std::io::Result<()> {
     file.write(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())?;
 
     for j in 0..ny {
+        let j = ny - 1 - j;
         for i in 0..nx {
-            let j = ny - 1 - j;
+            let mut col = Vec3::new(0.0, 0.0, 0.0);
+            for _ in 0..ns {
+                let u = (i as f64 + random::<f64>()) / nx as f64;
+                let v = (j as f64 + random::<f64>()) / ny as f64;
+                let r = camera.get_ray(u, v);
+                col += color(&r, &scene);
+            }
 
-            let u = i as f64 / nx as f64;
-            let v = j as f64 / ny as f64;
-            let r = camera.get_ray(u, v);
-            let col = color(&r, &scene);
-
+            col /= ns as f64;
             let ir = (255.99 * col.x) as usize;
             let ig = (255.99 * col.y) as usize;
             let ib = (255.99 * col.z) as usize;
