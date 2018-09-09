@@ -11,6 +11,85 @@ struct Ray {
     direction: Vec3,
 }
 
+struct Hit {
+    t: f64,
+    p: Vec3,
+    normal: Vec3,
+}
+
+struct Scene<'a> {
+    objects: Vec<&'a Hittable>,
+}
+
+impl<'a> Scene<'a> {
+    fn new(objects: Vec<&'a Hittable>) -> Self {
+        Scene { objects }
+    }
+}
+
+impl<'a> Hittable for Scene<'a> {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Hit> {
+        let mut closest_hit: Option<Hit> = None;
+        let mut closest_so_far = t_max;
+        for i in 0..self.objects.len() {
+            if let Some(hit) = self.objects[i].hit(&ray, t_min, closest_so_far) {
+                closest_so_far = hit.t;
+                closest_hit = Some(hit);
+            }
+        }
+        closest_hit
+    }
+}
+
+impl Hit {
+    fn new(t: f64, p: Vec3, normal: Vec3) -> Self {
+        Hit { t, p, normal }
+    }
+}
+
+trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Hit>;
+}
+
+struct Sphere {
+    center: Vec3,
+    radius: f64,
+}
+
+impl Sphere {
+    fn new(center: Vec3, radius: f64) -> Self {
+        Sphere { center, radius }
+    }
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Hit> {
+        use nalgebra::dot;
+        let oc = ray.origin - self.center;
+        let a = dot(&ray.direction, &ray.direction);
+        let b = dot(&oc, &ray.direction);
+        let c = dot(&oc, &oc) - self.radius * self.radius;
+        let discriminant = b * b - a * c;
+        if discriminant > 0.0 {
+            let temp = (-b - (b * b - a * c).sqrt()) / a;
+            if temp < t_max && temp > t_min {
+                let point = ray.point_at_parameter(temp);
+                Some(Hit::new(temp, point, (point - self.center) / self.radius))
+            } else {
+                let temp = (-b + (b * b - a * c).sqrt()) / a;
+                if temp < t_max && temp > t_min {
+                    let point = ray.point_at_parameter(temp);
+                    Some(Hit::new(temp, point, (point - self.center) / self.radius))
+                } else {
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
+}
+
 impl Ray {
     fn new(origin: Vec3, direction: Vec3) -> Self {
         Ray { origin, direction }
@@ -20,25 +99,9 @@ impl Ray {
     }
 }
 
-fn hit_sphere(center: Vec3, radius: f64, r: &Ray) -> f64 {
-    use nalgebra::dot;
-    let oc = r.origin - center;
-    let a = dot(&r.direction, &r.direction);
-    let b = 2.0 * dot(&oc, &r.direction);
-    let c = dot(&oc, &oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (-b - discriminant.sqrt()) / (2.0 * a)
-    }
-}
-
-fn color(ray: &Ray) -> Vec3 {
-    let t = hit_sphere(Vec3::new(0.0, 0.0, -1.0), 0.5, &ray);
-    if t > 0.0 {
-        let n = Unit::new_normalize(ray.point_at_parameter(t) - Vec3::new(0.0, 0.0, -1.0));
-        0.5 * Vec3::new(n.x + 1.0, n.y + 1.0, n.z + 1.0)
+fn color(ray: &Ray, hittable: &Hittable) -> Vec3 {
+    if let Some(hit) = hittable.hit(&ray, 0.0, std::f64::MAX) {
+        0.5 * Vec3::new(hit.normal.x + 1.0, hit.normal.y + 1.0, hit.normal.z + 1.0)
     } else {
         let unit_direction = Unit::new_normalize(ray.direction);
         let t = 0.5 * (unit_direction.y + 1.0);
@@ -54,6 +117,9 @@ fn main() -> std::io::Result<()> {
     let horizontal = Vec3::new(4.0, 0.0, 0.0);
     let vertical = Vec3::new(0.0, 2.0, 0.0);
     let origin = Vec3::new(0.0, 0.0, 0.0);
+    let sphere1 = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
+    let sphere2 = Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0);
+    let scene = Scene::new(vec![&sphere1, &sphere2]);
 
     file.write(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())?;
 
@@ -64,7 +130,7 @@ fn main() -> std::io::Result<()> {
             let u = i as f64 / nx as f64;
             let v = j as f64 / ny as f64;
             let r = Ray::new(origin, lower_left_corner + u * horizontal + v * vertical);
-            let col = color(&r);
+            let col = color(&r, &scene);
 
             let ir = (255.99 * col.x) as usize;
             let ig = (255.99 * col.y) as usize;
