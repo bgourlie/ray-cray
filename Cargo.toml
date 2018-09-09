@@ -1,0 +1,6 @@
+[package]
+name = "ray-cray"
+version = "0.1.0"
+authors = ["W. Brian Gourlie <bgourlie@gmail.com>"]
+
+[dependencies]
