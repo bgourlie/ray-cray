@@ -6,6 +6,31 @@ use std::io::prelude::*;
 
 type Vec3 = nalgebra::Vector3<f64>;
 
+struct Camera {
+    origin: Vec3,
+    lower_left_corner: Vec3,
+    horizontal: Vec3,
+    vertical: Vec3,
+}
+
+impl Camera {
+    fn new(origin: Vec3, lower_left_corner: Vec3, horizontal: Vec3, vertical: Vec3) -> Self {
+        Camera {
+            origin,
+            lower_left_corner,
+            horizontal,
+            vertical,
+        }
+    }
+
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray::new(
+            self.origin,
+            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+        )
+    }
+}
+
 struct Ray {
     origin: Vec3,
     direction: Vec3,
@@ -120,7 +145,7 @@ fn main() -> std::io::Result<()> {
     let sphere1 = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
     let sphere2 = Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0);
     let scene = Scene::new(vec![&sphere1, &sphere2]);
-
+    let camera = Camera::new(origin, lower_left_corner, horizontal, vertical);
     file.write(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())?;
 
     for j in 0..ny {
@@ -129,7 +154,7 @@ fn main() -> std::io::Result<()> {
 
             let u = i as f64 / nx as f64;
             let v = j as f64 / ny as f64;
-            let r = Ray::new(origin, lower_left_corner + u * horizontal + v * vertical);
+            let r = camera.get_ray(u, v);
             let col = color(&r, &scene);
 
             let ir = (255.99 * col.x) as usize;
