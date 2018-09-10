@@ -128,7 +128,9 @@ impl Ray {
 
 fn color(ray: &Ray, hittable: &Hittable) -> Vec3 {
     if let Some(hit) = hittable.hit(&ray, 0.0, std::f64::MAX) {
-        0.5 * Vec3::new(hit.normal.x + 1.0, hit.normal.y + 1.0, hit.normal.z + 1.0)
+        let target = hit.p + hit.normal + random_in_unit_sphere();
+        let ray2 = Ray::new(hit.p, target - hit.p);
+        0.5 * color(&ray2, hittable)
     } else {
         let unit_direction = Unit::new_normalize(ray.direction);
         let t = 0.5 * (unit_direction.y + 1.0);
@@ -142,8 +144,8 @@ fn random_in_unit_sphere() -> Vec3 {
     while {
         p = 2.0 * Vec3::new(random::<f64>(), random::<f64>(), random::<f64>()) - one;
         p.x * p.x + p.y * p.y + p.z * p.z >= 1.0
-    }{}
-
+    } {}
+    p
 }
 
 fn main() -> std::io::Result<()> {
