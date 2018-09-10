@@ -136,6 +136,16 @@ fn color(ray: &Ray, hittable: &Hittable) -> Vec3 {
     }
 }
 
+fn random_in_unit_sphere() -> Vec3 {
+    let one = Vec3::new(1.0, 1.0, 1.0);
+    let mut p: Vec3;
+    while {
+        p = 2.0 * Vec3::new(random::<f64>(), random::<f64>(), random::<f64>()) - one;
+        p.x * p.x + p.y * p.y + p.z * p.z >= 1.0
+    }{}
+
+}
+
 fn main() -> std::io::Result<()> {
     let mut file = File::create("foo.ppm")?;
     let nx = 200;
