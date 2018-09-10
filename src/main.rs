@@ -1,10 +1,9 @@
+extern crate image;
 extern crate nalgebra;
 extern crate rand;
 
 use nalgebra::Unit;
 use rand::random;
-use std::fs::File;
-use std::io::prelude::*;
 
 type Vec3 = nalgebra::Vector3<f64>;
 
@@ -149,9 +148,8 @@ fn random_in_unit_sphere() -> Vec3 {
 }
 
 fn main() -> std::io::Result<()> {
-    let mut file = File::create("foo.ppm")?;
-    let nx = 200;
-    let ny = 100;
+    let nx = 1600;
+    let ny = 800;
     let ns = 100;
     let lower_left_corner = Vec3::new(-2.0, -1.0, -1.0);
     let horizontal = Vec3::new(4.0, 0.0, 0.0);
@@ -161,26 +159,21 @@ fn main() -> std::io::Result<()> {
     let sphere2 = Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0);
     let scene = Scene::new(vec![&sphere1, &sphere2]);
     let camera = Camera::new(origin, lower_left_corner, horizontal, vertical);
-    file.write(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())?;
-
-    for j in 0..ny {
+    let img = image::RgbImage::from_fn(nx, ny, |i, j| {
         let j = ny - 1 - j;
-        for i in 0..nx {
-            let mut col = Vec3::new(0.0, 0.0, 0.0);
-            for _ in 0..ns {
-                let u = (i as f64 + random::<f64>()) / nx as f64;
-                let v = (j as f64 + random::<f64>()) / ny as f64;
-                let r = camera.get_ray(u, v);
-                col += color(&r, &scene);
-            }
-
-            col /= ns as f64;
-            let ir = (255.99 * col.x) as usize;
-            let ig = (255.99 * col.y) as usize;
-            let ib = (255.99 * col.z) as usize;
-
-            file.write(format!("{} {} {}\n", ir, ig, ib).as_bytes())?;
+        let mut col = Vec3::new(0.0, 0.0, 0.0);
+        for _ in 0..ns {
+            let u = (i as f64 + random::<f64>()) / nx as f64;
+            let v = (j as f64 + random::<f64>()) / ny as f64;
+            let r = camera.get_ray(u, v);
+            col += color(&r, &scene);
         }
-    }
-    Ok(())
+
+        col /= ns as f64;
+        let ir = (255.99 * col.x) as u8;
+        let ig = (255.99 * col.y) as u8;
+        let ib = (255.99 * col.z) as u8;
+        image::Rgb([ir, ig, ib])
+    });
+    img.save("foo.png")
 }
